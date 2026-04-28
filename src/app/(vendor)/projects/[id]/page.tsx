@@ -35,7 +35,8 @@ export default async function VendorProjectDetailPage({
   if (!project) notFound()
   if (project.vendorId !== session.user.vendorId) redirect('/projects')
 
-  const allQuotations = project.quotations.map(serializeQuotation)
+  const { quotations: rawQuotations, ...projectInfo } = project
+  const allQuotations = rawQuotations.map(serializeQuotation)
   const activeQuotation =
     allQuotations.find((q) => q.status !== 'SUPERSEDED') ?? allQuotations[0] ?? null
 
@@ -88,7 +89,7 @@ export default async function VendorProjectDetailPage({
         </TabsList>
 
         <TabsContent value="info">
-          <ProjectInfoCard project={project} isAdmin={false} />
+          <ProjectInfoCard project={projectInfo} isAdmin={false} />
         </TabsContent>
 
         <TabsContent value="quotation">

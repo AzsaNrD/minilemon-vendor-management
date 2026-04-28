@@ -35,7 +35,8 @@ export default async function AdminProjectDetailPage({
   })
   if (!project) notFound()
 
-  const allQuotations = project.quotations.map(serializeQuotation)
+  const { quotations: rawQuotations, ...projectInfo } = project
+  const allQuotations = rawQuotations.map(serializeQuotation)
   const activeQuotation =
     allQuotations.find((q) => q.status !== 'SUPERSEDED') ?? allQuotations[0] ?? null
 
@@ -93,7 +94,7 @@ export default async function AdminProjectDetailPage({
         </TabsList>
 
         <TabsContent value="info">
-          <ProjectInfoCard project={project} isAdmin />
+          <ProjectInfoCard project={projectInfo} isAdmin />
         </TabsContent>
 
         <TabsContent value="quotation">
