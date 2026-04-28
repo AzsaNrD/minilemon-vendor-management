@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { Search } from 'lucide-react'
+import { Search, ChevronDown } from 'lucide-react'
 import { PROJECT_STATUS_LABEL } from '@/lib/constants'
 
 const statusOptions = [
@@ -45,17 +45,20 @@ export function ProjectListFilter() {
           className="h-10 w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3 text-sm placeholder:text-ink-400 focus:border-lemon-500 focus:outline-none focus:ring-2 focus:ring-lemon-400"
         />
       </form>
-      <select
-        defaultValue={sp.get('status') ?? 'all'}
-        onChange={(e) => update({ status: e.target.value })}
-        className="h-10 rounded-lg border border-ink-200 bg-white px-3 text-sm focus:border-lemon-500 focus:outline-none focus:ring-2 focus:ring-lemon-400"
-      >
-        {statusOptions.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <div className="relative">
+        <select
+          defaultValue={sp.get('status') ?? 'all'}
+          onChange={(e) => update({ status: e.target.value })}
+          className="h-10 appearance-none rounded-lg border border-ink-200 bg-white pl-3 pr-9 text-sm focus:border-lemon-500 focus:outline-none focus:ring-2 focus:ring-lemon-400"
+        >
+          {statusOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400" />
+      </div>
     </div>
   )
 }
