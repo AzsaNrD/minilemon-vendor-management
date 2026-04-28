@@ -1,0 +1,384 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============ ENUMS ============
+
+enum UserRole {
+  ADMIN
+  VENDOR
+}
+
+enum VendorStatus {
+  PENDING_PROFILE
+  PENDING_NDA_SIGN
+  PENDING_ADMIN_SIGN
+  ACTIVE
+  INACTIVE
+}
+
+enum ProjectStatus {
+  DRAFT
+  QUOTATION_PENDING
+  QUOTATION_SUBMITTED
+  QUOTATION_NEGOTIATION
+  QUOTATION_SIGNED
+  SPK_PENDING_SIGN
+  IN_PROGRESS
+  INVOICE_SUBMITTED
+  COMPLETED
+  CANCELLED
+}
+
+enum DocumentStatus {
+  DRAFT
+  PENDING_VENDOR_SIGN
+  PENDING_ADMIN_SIGN
+  SIGNED
+  SUBMITTED
+  APPROVED
+  REVISION_REQUESTED
+  NEGOTIATION
+  SUPERSEDED
+}
+
+enum DocumentType {
+  NDA
+  QUOTATION
+  SPK
+  INVOICE
+}
+
+enum NotificationType {
+  INFO
+  ACTION
+  SUCCESS
+  WARNING
+}
+
+// ============ MODELS ============
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String    @map("password_hash")
+  role               UserRole
+  fullName           String    @map("full_name")
+  isActive           Boolean   @default(true) @map("is_active")
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  lastLoginAt        DateTime? @map("last_login_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  vendor         Vendor?
+  passwordResets PasswordReset[]
+  notifications  Notification[]
+  chatMessages   ChatMessage[]
+  auditLogs      AuditLog[]
+
+  accounts Account[]
+  sessions Session[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+model Vendor {
+  id                 String       @id @default(cuid())
+  userId             String       @unique @map("user_id")
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorCode         String       @unique @map("vendor_code")
+  fullName           String       @map("full_name")
+  nik                String?      @db.VarChar(16)
+  address            String?      @db.Text
+  phone              String?
+  companyName        String?      @map("company_name")
+  ktpFileKey         String?      @map("ktp_file_key")
+  bankName           String?      @map("bank_name")
+  bankAccountNo      String?      @map("bank_account_no")
+  bankAccountHolder  String?      @map("bank_account_holder")
+  npwp               String?
+  category           String?
+  status             VendorStatus @default(PENDING_PROFILE)
+  invitedAt          DateTime     @default(now()) @map("invited_at")
+  profileCompletedAt DateTime?    @map("profile_completed_at")
+  activatedAt        DateTime?    @map("activated_at")
+  deletedAt          DateTime?    @map("deleted_at")
+
+  ndas       NDA[]
+  projects   Project[]
+  invoices   Invoice[]
+  spks       SPK[]
+  quotations Quotation[]
+
+  @@index([status])
+  @@index([vendorCode])
+  @@map("vendors")
+}
+
+model NDA {
+  id                 String         @id @default(cuid())
+  docNumber          String         @unique @map("doc_number")
+  vendorId           String         @map("vendor_id")
+  vendorSnapshot     Json           @map("vendor_snapshot")
+  vendor             Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  effectiveDate      DateTime       @db.Date @map("effective_date")
+  status             DocumentStatus @default(PENDING_VENDOR_SIGN)
+  vendorSignatureKey String?        @map("vendor_signature_key")
+  vendorSignedAt     DateTime?      @map("vendor_signed_at")
+  vendorSignedIp     String?        @map("vendor_signed_ip")
+  adminSignatureKey  String?        @map("admin_signature_key")
+  adminSignedAt      DateTime?      @map("admin_signed_at")
+  adminSignedBy      String?        @map("admin_signed_by")
+  adminSignedIp      String?        @map("admin_signed_ip")
+  pdfFileKey         String?        @map("pdf_file_key")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  @@index([vendorId])
+  @@index([status])
+  @@map("ndas")
+}
+
+model Project {
+  id               String        @id @default(cuid())
+  name             String
+  vendorId         String        @map("vendor_id")
+  vendor           Vendor        @relation(fields: [vendorId], references: [id])
+  brief            String        @db.Text
+  deadlineEstimate DateTime?     @db.Date @map("deadline_estimate")
+  assetDriveLink   String?       @map("asset_drive_link")
+  status           ProjectStatus @default(DRAFT)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  lastUpdatedAt    DateTime      @default(now()) @map("last_updated_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  cancelledAt      DateTime?     @map("cancelled_at")
+  cancelledReason  String?       @map("cancelled_reason")
+  completedAt      DateTime?     @map("completed_at")
+  deletedAt        DateTime?     @map("deleted_at")
+
+  quotations   Quotation[]
+  spk          SPK?
+  invoice      Invoice?
+  chatMessages ChatMessage[]
+
+  @@index([vendorId])
+  @@index([status])
+  @@map("projects")
+}
+
+model Quotation {
+  id                  String         @id @default(cuid())
+  docNumber           String         @unique @map("doc_number")
+  projectId           String         @map("project_id")
+  project             Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vendorId            String         @map("vendor_id")
+  vendor              Vendor         @relation(fields: [vendorId], references: [id])
+  version             Int            @default(1)
+  parentQuotationId   String?        @map("parent_quotation_id")
+  parentQuotation     Quotation?     @relation("QuotationVersions", fields: [parentQuotationId], references: [id])
+  versions            Quotation[]    @relation("QuotationVersions")
+  items               Json
+  ppnEnabled          Boolean        @default(false) @map("ppn_enabled")
+  ppnPercent          Decimal        @default(11) @db.Decimal(5, 2) @map("ppn_percent")
+  discount            Decimal        @default(0) @db.Decimal(15, 2)
+  subtotal            Decimal        @db.Decimal(15, 2)
+  ppn                 Decimal        @default(0) @db.Decimal(15, 2)
+  grandTotal          Decimal        @db.Decimal(15, 2) @map("grand_total")
+  notes               String?        @db.Text
+  validityUntil       DateTime       @db.Date @map("validity_until")
+  date                DateTime       @db.Date
+  status              DocumentStatus @default(DRAFT)
+  revisionRequestNote String?        @db.Text @map("revision_request_note")
+  vendorSignatureKey  String?        @map("vendor_signature_key")
+  vendorSignedAt      DateTime?      @map("vendor_signed_at")
+  adminSignatureKey   String?        @map("admin_signature_key")
+  adminSignedAt       DateTime?      @map("admin_signed_at")
+  adminSignedBy       String?        @map("admin_signed_by")
+  pdfFileKey          String?        @map("pdf_file_key")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  @@index([projectId])
+  @@index([vendorId])
+  @@index([status])
+  @@map("quotations")
+}
+
+model SPK {
+  id                 String         @id @default(cuid())
+  docNumber          String         @unique @map("doc_number")
+  projectId          String         @unique @map("project_id")
+  project            Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quotationId        String         @unique @map("quotation_id")
+  vendorId           String         @map("vendor_id")
+  vendor             Vendor         @relation(fields: [vendorId], references: [id])
+  vendorSnapshot     Json           @map("vendor_snapshot")
+  workTitle          String         @map("work_title")
+  scopeItems         Json           @map("scope_items")
+  periodStart        DateTime       @db.Date @map("period_start")
+  periodEnd          DateTime       @db.Date @map("period_end")
+  warranty           String?
+  status             DocumentStatus @default(PENDING_ADMIN_SIGN)
+  adminSignatureKey  String?        @map("admin_signature_key")
+  adminSignedAt      DateTime?      @map("admin_signed_at")
+  adminSignedBy      String?        @map("admin_signed_by")
+  vendorSignatureKey String?        @map("vendor_signature_key")
+  vendorSignedAt     DateTime?      @map("vendor_signed_at")
+  pdfFileKey         String?        @map("pdf_file_key")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  @@index([vendorId])
+  @@index([status])
+  @@map("spks")
+}
+
+model Invoice {
+  id                   String         @id @default(cuid())
+  docNumber            String         @unique @map("doc_number")
+  projectId            String         @unique @map("project_id")
+  project              Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  spkId                String         @unique @map("spk_id")
+  vendorId             String         @map("vendor_id")
+  vendor               Vendor         @relation(fields: [vendorId], references: [id])
+  invoiceDate          DateTime       @db.Date @map("invoice_date")
+  amount               Decimal        @db.Decimal(15, 2)
+  deliverableDriveLink String?        @map("deliverable_drive_link")
+  notes                String?        @db.Text
+  status               DocumentStatus @default(DRAFT)
+  vendorSignatureKey   String?        @map("vendor_signature_key")
+  vendorSignedAt       DateTime?      @map("vendor_signed_at")
+  approvedAt           DateTime?      @map("approved_at")
+  approvedBy           String?        @map("approved_by")
+  paidAt               DateTime?      @db.Date @map("paid_at")
+  paymentRef           String?        @map("payment_ref")
+  pdfFileKey           String?        @map("pdf_file_key")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  @@index([vendorId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model ChatMessage {
+  id        String    @id @default(cuid())
+  projectId String    @map("project_id")
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  senderId  String    @map("sender_id")
+  sender    User      @relation(fields: [senderId], references: [id])
+  content   String?   @db.Text
+  driveLink Json?     @map("drive_link")
+  createdAt DateTime  @default(now()) @map("created_at")
+  readAt    DateTime? @map("read_at")
+
+  @@index([projectId, createdAt])
+  @@map("chat_messages")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(INFO)
+  title     String
+  body      String           @db.Text
+  link      String?
+  isRead    Boolean          @default(false) @map("is_read")
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model CompanySettings {
+  id                      String   @id @default("singleton")
+  name                    String
+  address                 String   @db.Text
+  phone                   String
+  email                   String
+  directorName            String   @map("director_name")
+  directorTitle           String   @map("director_title")
+  logoFileKey             String?  @map("logo_file_key")
+  adminMasterSignatureKey String?  @map("admin_master_signature_key")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("company_settings")
+}
+
+model DocumentCounter {
+  id        String   @id
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("document_counters")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  metadata   Json?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
