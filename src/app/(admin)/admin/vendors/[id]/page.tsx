@@ -1,28 +1,50 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Mail, Phone, MapPin, CreditCard } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, MapPin, CreditCard, FileX } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/permissions'
+import { getCompanyInfo } from '@/lib/nda'
+import { getSignedDownloadUrl } from '@/lib/s3'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardBody } from '@/components/ui/Card'
 import { VendorStatusBadge } from '@/components/ui/Badge'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { VendorActionsMenu } from '@/components/vendors/VendorActionsMenu'
+import { NDAPreview } from '@/components/shared/NDAPreview'
+import { AdminNDAActions } from '@/components/vendors/AdminNDAActions'
 import { formatDate } from '@/lib/utils'
 
-export default async function VendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function VendorDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
+}) {
   await requireAdmin()
   const { id } = await params
+  const { tab } = await searchParams
 
   const vendor = await prisma.vendor.findUnique({
     where: { id },
     include: {
       user: { select: { email: true, lastLoginAt: true, createdAt: true, isActive: true } },
       _count: { select: { projects: true } },
+      ndas: { orderBy: { createdAt: 'desc' }, take: 1 },
     },
   })
 
   if (!vendor) notFound()
+
+  const nda = vendor.ndas[0]
+  const company = nda ? await getCompanyInfo() : null
+  const [vendorSigUrl, adminSigUrl] = nda
+    ? await Promise.all([
+        nda.vendorSignatureKey ? getSignedDownloadUrl(nda.vendorSignatureKey).catch(() => undefined) : undefined,
+        nda.adminSignatureKey ? getSignedDownloadUrl(nda.adminSignatureKey).catch(() => undefined) : undefined,
+      ])
+    : [undefined, undefined]
 
   return (
     <div className="space-y-6">
@@ -45,12 +67,10 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
         <VendorActionsMenu vendorId={vendor.id} status={vendor.status} userActive={vendor.user.isActive} />
       </header>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={tab === 'nda' ? 'nda' : 'overview'}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="nda" disabled>
-            NDA
-          </TabsTrigger>
+          <TabsTrigger value="nda">NDA</TabsTrigger>
           <TabsTrigger value="projects" disabled>
             Project History
           </TabsTrigger>
@@ -105,7 +125,9 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
                   <div>
                     <p className="text-xs uppercase tracking-wide text-ink-500">Login Terakhir</p>
                     <p className="text-ink-900">
-                      {vendor.user.lastLoginAt ? formatDate(vendor.user.lastLoginAt, { withTime: true }) : 'Belum pernah'}
+                      {vendor.user.lastLoginAt
+                        ? formatDate(vendor.user.lastLoginAt, { withTime: true })
+                        : 'Belum pernah'}
                     </p>
                   </div>
                   <div>
@@ -116,6 +138,28 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
               </CardBody>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="nda">
+          {!nda || !company ? (
+            <Card>
+              <EmptyState
+                icon={<FileX className="h-5 w-5" />}
+                title="NDA belum tersedia"
+                description="NDA otomatis dibuat ketika vendor melengkapi biodata."
+              />
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <AdminNDAActions vendorId={vendor.id} nda={nda} />
+              <NDAPreview
+                nda={nda}
+                company={company}
+                vendorSignatureUrl={vendorSigUrl}
+                adminSignatureUrl={adminSigUrl}
+              />
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
