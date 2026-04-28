@@ -1,9 +1,10 @@
+import Link from 'next/link'
+import { FolderKanban } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { requireVendor } from '@/lib/permissions'
 import { Card, CardBody } from '@/components/ui/Card'
 import { ProjectStatusBadge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { FolderKanban } from 'lucide-react'
 import { formatRelativeTime } from '@/lib/utils'
 
 export default async function VendorProjectsPage() {
@@ -32,15 +33,17 @@ export default async function VendorProjectsPage() {
       ) : (
         <div className="space-y-2">
           {projects.map((p) => (
-            <Card key={p.id}>
-              <CardBody className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-ink-900 truncate">{p.name}</p>
-                  <p className="text-xs text-ink-500">Update {formatRelativeTime(p.lastUpdatedAt)}</p>
-                </div>
-                <ProjectStatusBadge status={p.status} />
-              </CardBody>
-            </Card>
+            <Link key={p.id} href={`/projects/${p.id}`}>
+              <Card className="hover:shadow-card transition-shadow">
+                <CardBody className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink-900 truncate">{p.name}</p>
+                    <p className="text-xs text-ink-500">Update {formatRelativeTime(p.lastUpdatedAt)}</p>
+                  </div>
+                  <ProjectStatusBadge status={p.status} />
+                </CardBody>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
