@@ -10,7 +10,7 @@ const items = [
   { href: '/admin/vendors', label: 'Vendors', icon: Users },
   { href: '/admin/projects', label: 'Projects', icon: FolderKanban },
   { href: '/admin/documents', label: 'Documents', icon: FileText },
-  { href: '/admin/settings/company', label: 'Settings', icon: Settings, matchPrefix: '/admin/settings' },
+  { href: '/admin/settings/signature', label: 'Settings', icon: Settings, matchPrefix: '/admin/settings' },
 ]
 
 export function AdminSidebar() {
