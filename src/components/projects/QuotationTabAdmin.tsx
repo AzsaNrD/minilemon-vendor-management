@@ -11,11 +11,11 @@ import { Textarea } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
 import { adminSignQuotation, requestQuotationRevision } from '@/actions/quotations'
 import { formatDate, formatIDR, formatRelativeTime } from '@/lib/utils'
-import type { Quotation } from '@prisma/client'
+import type { SerializedQuotation } from '@/lib/quotation'
 
 interface Props {
-  quotations: Quotation[]
-  activeQuotation: Quotation | null
+  quotations: SerializedQuotation[]
+  activeQuotation: SerializedQuotation | null
 }
 
 export function QuotationTabAdmin({ quotations, activeQuotation }: Props) {
@@ -78,7 +78,7 @@ export function QuotationTabAdmin({ quotations, activeQuotation }: Props) {
               <span className="text-xs text-ink-400">v{activeQuotation.version}</span>
             </div>
             <p className="text-sm text-ink-700 mt-2">
-              Total: <strong>{formatIDR(Number(activeQuotation.grandTotal))}</strong>
+              Total: <strong>{formatIDR(activeQuotation.grandTotal)}</strong>
             </p>
             {activeQuotation.revisionRequestNote && activeQuotation.status === 'REVISION_REQUESTED' && (
               <p className="mt-2 text-xs text-coral-600 italic">
@@ -159,7 +159,7 @@ export function QuotationTabAdmin({ quotations, activeQuotation }: Props) {
             </div>
             <div className="flex justify-between mt-1">
               <span className="text-ink-600">Grand Total</span>
-              <span className="font-bold">{formatIDR(Number(activeQuotation.grandTotal))}</span>
+              <span className="font-bold">{formatIDR(activeQuotation.grandTotal)}</span>
             </div>
             <div className="flex justify-between mt-1">
               <span className="text-ink-600">Berlaku sampai</span>

@@ -1,9 +1,10 @@
-import type { Quotation, Vendor, CompanySettings } from '@prisma/client'
+import type { Vendor, CompanySettings } from '@prisma/client'
 import type { QuotationItemInput } from '@/schemas/quotation'
+import type { SerializedQuotation } from '@/lib/quotation'
 import { formatDate, formatIDR } from '@/lib/utils'
 
 interface QuotationPreviewProps {
-  quotation: Quotation
+  quotation: SerializedQuotation
   vendor: Vendor
   company: CompanySettings
   vendorSignatureUrl?: string
@@ -18,10 +19,7 @@ export function QuotationPreview({
   adminSignatureUrl,
 }: QuotationPreviewProps) {
   const items = quotation.items as unknown as QuotationItemInput[]
-  const subtotal = Number(quotation.subtotal)
-  const discount = Number(quotation.discount)
-  const ppn = Number(quotation.ppn)
-  const grandTotal = Number(quotation.grandTotal)
+  const { subtotal, discount, ppn, grandTotal } = quotation
 
   return (
     <article className="bg-white rounded-xl border border-ink-100 shadow-soft overflow-hidden">
@@ -95,7 +93,7 @@ export function QuotationPreview({
           )}
           {quotation.ppnEnabled && (
             <div className="flex justify-between px-3 py-1">
-              <span className="text-ink-600">PPN ({Number(quotation.ppnPercent)}%)</span>
+              <span className="text-ink-600">PPN ({quotation.ppnPercent}%)</span>
               <span>{formatIDR(ppn)}</span>
             </div>
           )}

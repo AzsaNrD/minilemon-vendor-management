@@ -13,6 +13,7 @@ import { ProjectActionsMenu } from '@/components/projects/ProjectActionsMenu'
 import { QuotationTabAdmin } from '@/components/projects/QuotationTabAdmin'
 import { QuotationPreview } from '@/components/shared/QuotationPreview'
 import { ChatThread } from '@/components/shared/ChatThread'
+import { serializeQuotation } from '@/lib/quotation'
 
 export default async function AdminProjectDetailPage({
   params,
@@ -34,8 +35,9 @@ export default async function AdminProjectDetailPage({
   })
   if (!project) notFound()
 
+  const allQuotations = project.quotations.map(serializeQuotation)
   const activeQuotation =
-    project.quotations.find((q) => q.status !== 'SUPERSEDED') ?? project.quotations[0] ?? null
+    allQuotations.find((q) => q.status !== 'SUPERSEDED') ?? allQuotations[0] ?? null
 
   const company = activeQuotation ? await getCompanyInfo() : null
   const vendorFull = activeQuotation
@@ -96,7 +98,7 @@ export default async function AdminProjectDetailPage({
 
         <TabsContent value="quotation">
           <div className="space-y-4">
-            <QuotationTabAdmin quotations={project.quotations} activeQuotation={activeQuotation} />
+            <QuotationTabAdmin quotations={allQuotations} activeQuotation={activeQuotation} />
             {activeQuotation && company && vendorFull && (
               <QuotationPreview
                 quotation={activeQuotation}

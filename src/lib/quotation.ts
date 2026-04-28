@@ -1,7 +1,32 @@
-import { prisma } from './prisma'
 import type { Prisma, Quotation } from '@prisma/client'
 import { getNextDocNumber } from './numbering'
 import { calculateQuotationTotals, type QuotationItemInput } from '@/schemas/quotation'
+
+/**
+ * Plain-object form of Quotation (Decimal fields converted to number) so it
+ * can be passed from a Server Component to a Client Component.
+ */
+export type SerializedQuotation = Omit<
+  Quotation,
+  'ppnPercent' | 'discount' | 'subtotal' | 'ppn' | 'grandTotal'
+> & {
+  ppnPercent: number
+  discount: number
+  subtotal: number
+  ppn: number
+  grandTotal: number
+}
+
+export function serializeQuotation(q: Quotation): SerializedQuotation {
+  return {
+    ...q,
+    ppnPercent: Number(q.ppnPercent),
+    discount: Number(q.discount),
+    subtotal: Number(q.subtotal),
+    ppn: Number(q.ppn),
+    grandTotal: Number(q.grandTotal),
+  }
+}
 
 interface CreateQuotationInput {
   projectId: string

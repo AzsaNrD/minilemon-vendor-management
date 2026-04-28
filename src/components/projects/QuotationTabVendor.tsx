@@ -12,12 +12,12 @@ import { FileUpload } from '@/components/ui/FileUpload'
 import { useToast } from '@/components/ui/Toast'
 import { vendorSignQuotation } from '@/actions/quotations'
 import { formatDate, formatIDR, formatRelativeTime } from '@/lib/utils'
-import type { Quotation } from '@prisma/client'
+import type { SerializedQuotation } from '@/lib/quotation'
 
 interface Props {
   projectId: string
-  quotations: Quotation[]
-  activeQuotation: Quotation | null
+  quotations: SerializedQuotation[]
+  activeQuotation: SerializedQuotation | null
   canSubmit: boolean
 }
 
@@ -102,7 +102,7 @@ export function QuotationTabVendor({ projectId, quotations, activeQuotation, can
                 <span className="text-xs text-ink-400">v{activeQuotation.version}</span>
               </div>
               <p className="text-sm text-ink-700 mt-2">
-                Total: <strong>{formatIDR(Number(activeQuotation.grandTotal))}</strong>
+                Total: <strong>{formatIDR(activeQuotation.grandTotal)}</strong>
               </p>
               <p className="text-xs text-ink-500">Berlaku sampai {formatDate(activeQuotation.validityUntil)}</p>
             </div>

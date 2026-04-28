@@ -12,6 +12,7 @@ import { ProjectInfoCard } from '@/components/projects/ProjectInfoCard'
 import { QuotationTabVendor } from '@/components/projects/QuotationTabVendor'
 import { QuotationPreview } from '@/components/shared/QuotationPreview'
 import { ChatThread } from '@/components/shared/ChatThread'
+import { serializeQuotation } from '@/lib/quotation'
 
 export default async function VendorProjectDetailPage({
   params,
@@ -34,8 +35,9 @@ export default async function VendorProjectDetailPage({
   if (!project) notFound()
   if (project.vendorId !== session.user.vendorId) redirect('/projects')
 
+  const allQuotations = project.quotations.map(serializeQuotation)
   const activeQuotation =
-    project.quotations.find((q) => q.status !== 'SUPERSEDED') ?? project.quotations[0] ?? null
+    allQuotations.find((q) => q.status !== 'SUPERSEDED') ?? allQuotations[0] ?? null
 
   const company = activeQuotation ? await getCompanyInfo() : null
   const vendorFull = activeQuotation
@@ -93,7 +95,7 @@ export default async function VendorProjectDetailPage({
           <div className="space-y-4">
             <QuotationTabVendor
               projectId={project.id}
-              quotations={project.quotations}
+              quotations={allQuotations}
               activeQuotation={activeQuotation}
               canSubmit={canSubmit}
             />
