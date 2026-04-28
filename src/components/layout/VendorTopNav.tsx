@@ -2,9 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { UserMenu } from './UserMenu'
+import { NotificationBell } from './NotificationBell'
 
 interface VendorTopNavProps {
   fullName: string
@@ -53,15 +53,7 @@ export function VendorTopNav({ fullName, email, vendorStatus }: VendorTopNavProp
           </nav>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {fullyOnboarded && (
-            <button
-              type="button"
-              aria-label="Notifikasi"
-              className="relative rounded-lg p-2 text-ink-600 hover:bg-ink-50"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
-          )}
+          {fullyOnboarded && <NotificationBell />}
           <UserMenu fullName={fullName} email={email} role="VENDOR" />
         </div>
       </div>
