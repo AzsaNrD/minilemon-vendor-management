@@ -10,6 +10,10 @@ import { QuotationSubmittedEmail } from '@/emails/quotation-submitted'
 import { QuotationRevisionRequestedEmail } from '@/emails/quotation-revision-requested'
 import { QuotationAdminSignedEmail } from '@/emails/quotation-admin-signed'
 import { QuotationSignedEmail } from '@/emails/quotation-signed'
+import { SPKReadySignEmail } from '@/emails/spk-ready-sign'
+import { SPKSignedActiveEmail } from '@/emails/spk-signed-active'
+import { InvoiceSubmittedEmail } from '@/emails/invoice-submitted'
+import { InvoiceApprovedEmail } from '@/emails/invoice-approved'
 
 const TEMPLATES = {
   'invite-vendor': InviteVendorEmail,
@@ -22,6 +26,10 @@ const TEMPLATES = {
   'quotation-revision-requested': QuotationRevisionRequestedEmail,
   'quotation-admin-signed': QuotationAdminSignedEmail,
   'quotation-signed': QuotationSignedEmail,
+  'spk-ready-sign': SPKReadySignEmail,
+  'spk-signed-active': SPKSignedActiveEmail,
+  'invoice-submitted': InvoiceSubmittedEmail,
+  'invoice-approved': InvoiceApprovedEmail,
 } as const
 
 type TemplateKey = keyof typeof TEMPLATES
