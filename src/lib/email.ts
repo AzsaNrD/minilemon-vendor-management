@@ -5,6 +5,11 @@ import { PasswordResetEmail } from '@/emails/password-reset'
 import { VendorProfileCompletedEmail } from '@/emails/vendor-profile-completed'
 import { NDAVendorSignedEmail } from '@/emails/nda-vendor-signed'
 import { NDASignedEmail } from '@/emails/nda-signed'
+import { ProjectAssignedEmail } from '@/emails/project-assigned'
+import { QuotationSubmittedEmail } from '@/emails/quotation-submitted'
+import { QuotationRevisionRequestedEmail } from '@/emails/quotation-revision-requested'
+import { QuotationAdminSignedEmail } from '@/emails/quotation-admin-signed'
+import { QuotationSignedEmail } from '@/emails/quotation-signed'
 
 const TEMPLATES = {
   'invite-vendor': InviteVendorEmail,
@@ -12,6 +17,11 @@ const TEMPLATES = {
   'vendor-profile-completed': VendorProfileCompletedEmail,
   'nda-vendor-signed': NDAVendorSignedEmail,
   'nda-signed': NDASignedEmail,
+  'project-assigned': ProjectAssignedEmail,
+  'quotation-submitted': QuotationSubmittedEmail,
+  'quotation-revision-requested': QuotationRevisionRequestedEmail,
+  'quotation-admin-signed': QuotationAdminSignedEmail,
+  'quotation-signed': QuotationSignedEmail,
 } as const
 
 type TemplateKey = keyof typeof TEMPLATES
