@@ -2,10 +2,16 @@ import { Resend } from 'resend'
 import { render } from '@react-email/render'
 import { InviteVendorEmail } from '@/emails/invite-vendor'
 import { PasswordResetEmail } from '@/emails/password-reset'
+import { VendorProfileCompletedEmail } from '@/emails/vendor-profile-completed'
+import { NDAVendorSignedEmail } from '@/emails/nda-vendor-signed'
+import { NDASignedEmail } from '@/emails/nda-signed'
 
 const TEMPLATES = {
   'invite-vendor': InviteVendorEmail,
   'password-reset': PasswordResetEmail,
+  'vendor-profile-completed': VendorProfileCompletedEmail,
+  'nda-vendor-signed': NDAVendorSignedEmail,
+  'nda-signed': NDASignedEmail,
 } as const
 
 type TemplateKey = keyof typeof TEMPLATES
