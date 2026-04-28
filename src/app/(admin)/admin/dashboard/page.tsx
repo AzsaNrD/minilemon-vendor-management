@@ -1,55 +1,21 @@
 import Link from 'next/link'
 import { Users, FolderKanban, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/permissions'
+import { getAdminDashboard } from '@/queries/dashboard'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { VendorStatusBadge, ProjectStatusBadge } from '@/components/ui/Badge'
-import { startOfMonth, formatRelativeTime } from '@/lib/utils'
-import { IN_PROGRESS_STATUSES } from '@/lib/constants'
+import { formatRelativeTime } from '@/lib/utils'
 
 export default async function AdminDashboardPage() {
   await requireAdmin()
-
-  const [activeVendors, activeProjects, pendingNDA, completedThisMonth, recentVendors, recentProjects] =
-    await Promise.all([
-      prisma.vendor.count({ where: { status: 'ACTIVE', deletedAt: null } }),
-      prisma.project.count({
-        where: { status: { in: [...IN_PROGRESS_STATUSES] }, deletedAt: null },
-      }),
-      prisma.vendor.count({ where: { status: 'PENDING_ADMIN_SIGN', deletedAt: null } }),
-      prisma.project.count({
-        where: { completedAt: { gte: startOfMonth() } },
-      }),
-      prisma.vendor.findMany({
-        where: { deletedAt: null },
-        orderBy: { invitedAt: 'desc' },
-        take: 5,
-        include: { user: { select: { email: true } } },
-      }),
-      prisma.project.findMany({
-        where: { deletedAt: null },
-        orderBy: { lastUpdatedAt: 'desc' },
-        take: 5,
-        include: { vendor: { select: { fullName: true } } },
-      }),
-    ])
+  const { counts, recentVendors, recentProjects } = await getAdminDashboard()
 
   const stats = [
-    { label: 'Vendor Aktif', value: activeVendors, icon: Users, color: 'bg-leaf-100 text-leaf-600' },
-    { label: 'Project Berjalan', value: activeProjects, icon: FolderKanban, color: 'bg-lemon-100 text-ink-800' },
-    {
-      label: 'Perlu Tindakan',
-      value: pendingNDA,
-      icon: AlertCircle,
-      color: 'bg-coral-100 text-coral-600',
-    },
-    {
-      label: 'Selesai Bulan Ini',
-      value: completedThisMonth,
-      icon: CheckCircle2,
-      color: 'bg-leaf-100 text-leaf-600',
-    },
+    { label: 'Vendor Aktif', value: counts.activeVendors, icon: Users, color: 'bg-leaf-100 text-leaf-600' },
+    { label: 'Project Berjalan', value: counts.activeProjects, icon: FolderKanban, color: 'bg-lemon-100 text-ink-800' },
+    { label: 'Perlu Tindakan', value: counts.pendingNDA, icon: AlertCircle, color: 'bg-coral-100 text-coral-600' },
+    { label: 'Selesai Bulan Ini', value: counts.completedThisMonth, icon: CheckCircle2, color: 'bg-leaf-100 text-leaf-600' },
   ]
 
   return (

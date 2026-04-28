@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { FolderKanban } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { requireVendor } from '@/lib/permissions'
+import { listVendorProjects } from '@/queries/projects'
 import { Card, CardBody } from '@/components/ui/Card'
 import { ProjectStatusBadge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -11,10 +11,7 @@ export default async function VendorProjectsPage() {
   const session = await requireVendor()
   if (!session.user.vendorId) return null
 
-  const projects = await prisma.project.findMany({
-    where: { vendorId: session.user.vendorId, deletedAt: null },
-    orderBy: { lastUpdatedAt: 'desc' },
-  })
+  const projects = await listVendorProjects(session.user.vendorId)
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

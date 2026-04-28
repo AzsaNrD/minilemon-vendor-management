@@ -1,9 +1,7 @@
 import { redirect } from 'next/navigation'
 import { Clock, Download } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { requireVendor } from '@/lib/permissions'
-import { getCompanyInfo } from '@/lib/nda'
-import { getSignedDownloadUrl } from '@/lib/s3'
+import { getActiveVendorNDA } from '@/queries/nda'
 import { Card, CardBody } from '@/components/ui/Card'
 import { DocStatusBadge } from '@/components/ui/Badge'
 import { NDAPreview } from '@/components/shared/NDAPreview'
@@ -15,12 +13,9 @@ export default async function VendorNDAPage() {
   const session = await requireVendor()
   if (!session.user.vendorId) redirect('/dashboard')
 
-  const nda = await prisma.nDA.findFirst({
-    where: { vendorId: session.user.vendorId, status: { not: 'SUPERSEDED' } },
-    orderBy: { createdAt: 'desc' },
-  })
+  const data = await getActiveVendorNDA(session.user.vendorId)
 
-  if (!nda) {
+  if (!data) {
     return (
       <div className="max-w-3xl mx-auto">
         <Card>
@@ -35,12 +30,7 @@ export default async function VendorNDAPage() {
     )
   }
 
-  const company = await getCompanyInfo()
-  const [vendorSigUrl, adminSigUrl] = await Promise.all([
-    nda.vendorSignatureKey ? getSignedDownloadUrl(nda.vendorSignatureKey).catch(() => undefined) : undefined,
-    nda.adminSignatureKey ? getSignedDownloadUrl(nda.adminSignatureKey).catch(() => undefined) : undefined,
-  ])
-
+  const { nda, company, vendorSigUrl, adminSigUrl } = data
   const showSignPanel = nda.status === 'PENDING_VENDOR_SIGN'
 
   return (

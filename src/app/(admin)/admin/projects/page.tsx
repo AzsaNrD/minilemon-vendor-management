@@ -1,15 +1,13 @@
 import Link from 'next/link'
 import { Plus, FolderKanban } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/permissions'
+import { listAdminProjects } from '@/queries/projects'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ProjectStatusBadge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ProjectListFilter } from '@/components/projects/ProjectListFilter'
-import { PROJECT_STATUS_LABEL } from '@/lib/constants'
 import { formatRelativeTime } from '@/lib/utils'
-import type { Prisma, ProjectStatus } from '@prisma/client'
 
 export default async function AdminProjectsPage({
   searchParams,
@@ -18,23 +16,7 @@ export default async function AdminProjectsPage({
 }) {
   await requireAdmin()
   const params = await searchParams
-
-  const where: Prisma.ProjectWhereInput = { deletedAt: null }
-  if (params.status && params.status !== 'all' && params.status in PROJECT_STATUS_LABEL) {
-    where.status = params.status as ProjectStatus
-  }
-  if (params.q) {
-    where.OR = [
-      { name: { contains: params.q, mode: 'insensitive' } },
-      { vendor: { fullName: { contains: params.q, mode: 'insensitive' } } },
-    ]
-  }
-
-  const projects = await prisma.project.findMany({
-    where,
-    include: { vendor: { select: { fullName: true, vendorCode: true } } },
-    orderBy: { lastUpdatedAt: 'desc' },
-  })
+  const projects = await listAdminProjects({ status: params.status, q: params.q })
 
   return (
     <div className="space-y-6">

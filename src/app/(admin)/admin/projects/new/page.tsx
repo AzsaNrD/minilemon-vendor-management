@@ -1,19 +1,14 @@
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
+import { ArrowLeft, Users } from 'lucide-react'
 import { requireAdmin } from '@/lib/permissions'
+import { listActiveVendorsForSelect } from '@/queries/vendors'
 import { Card, CardBody } from '@/components/ui/Card'
 import { NewProjectForm } from '@/components/projects/NewProjectForm'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Users } from 'lucide-react'
 
 export default async function NewProjectPage() {
   await requireAdmin()
-  const vendors = await prisma.vendor.findMany({
-    where: { status: 'ACTIVE', deletedAt: null },
-    select: { id: true, fullName: true, vendorCode: true, category: true },
-    orderBy: { fullName: 'asc' },
-  })
+  const vendors = await listActiveVendorsForSelect()
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

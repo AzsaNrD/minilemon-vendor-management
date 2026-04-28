@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { requireVendor } from '@/lib/permissions'
+import { getInvoiceFormContext } from '@/queries/projects'
 import { Card, CardBody } from '@/components/ui/Card'
 import { SubmitInvoiceForm } from '@/components/projects/SubmitInvoiceForm'
 import { formatIDR } from '@/lib/utils'
@@ -13,24 +13,15 @@ export default async function SubmitInvoicePage({
   params: Promise<{ id: string }>
 }) {
   const session = await requireVendor()
+  if (!session.user.vendorId) redirect('/projects')
   const { id } = await params
 
-  const project = await prisma.project.findUnique({
-    where: { id },
-    include: {
-      invoice: true,
-      spk: true,
-      vendor: true,
-      quotations: { where: { status: 'SIGNED' }, take: 1 },
-    },
-  })
-  if (!project) notFound()
-  if (project.vendorId !== session.user.vendorId) redirect('/projects')
-  if (project.status !== 'IN_PROGRESS') redirect(`/projects/${id}?tab=invoice`)
-  if (project.invoice) redirect(`/projects/${id}?tab=invoice`)
-  if (!project.spk || project.spk.status !== 'SIGNED') redirect(`/projects/${id}?tab=invoice`)
-  const signedQuotation = project.quotations[0]
-  if (!signedQuotation) redirect(`/projects/${id}?tab=invoice`)
+  const ctx = await getInvoiceFormContext(id, session.user.vendorId)
+  if (!ctx.project) notFound()
+  if (ctx.gate === 'forbidden') redirect('/projects')
+  if (ctx.gate === 'invalid') redirect(`/projects/${id}?tab=invoice`)
+
+  const { project, signedQuotation } = ctx
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

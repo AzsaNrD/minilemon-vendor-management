@@ -1,15 +1,13 @@
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
+import { Users } from 'lucide-react'
 import { requireAdmin } from '@/lib/permissions'
+import { listAdminVendors } from '@/queries/vendors'
 import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { VendorStatusBadge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Users } from 'lucide-react'
 import { InviteVendorButton } from '@/components/vendors/InviteVendorButton'
 import { VendorListFilter } from '@/components/vendors/VendorListFilter'
-import { VENDOR_STATUS_LABEL } from '@/lib/constants'
-import type { Prisma, VendorStatus } from '@prisma/client'
 
 export default async function VendorsPage({
   searchParams,
@@ -18,27 +16,7 @@ export default async function VendorsPage({
 }) {
   await requireAdmin()
   const params = await searchParams
-
-  const where: Prisma.VendorWhereInput = { deletedAt: null }
-  if (params.status && params.status !== 'all' && params.status in VENDOR_STATUS_LABEL) {
-    where.status = params.status as VendorStatus
-  }
-  if (params.q) {
-    where.OR = [
-      { fullName: { contains: params.q, mode: 'insensitive' } },
-      { vendorCode: { contains: params.q, mode: 'insensitive' } },
-      { user: { email: { contains: params.q, mode: 'insensitive' } } },
-    ]
-  }
-
-  const vendors = await prisma.vendor.findMany({
-    where,
-    include: {
-      user: { select: { email: true } },
-      _count: { select: { projects: true } },
-    },
-    orderBy: { invitedAt: 'desc' },
-  })
+  const vendors = await listAdminVendors({ status: params.status, q: params.q })
 
   return (
     <div className="space-y-6">

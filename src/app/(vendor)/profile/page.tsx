@@ -1,29 +1,16 @@
 import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
 import { requireVendor } from '@/lib/permissions'
+import { getVendorProfile } from '@/queries/profile'
 import { Card, CardBody } from '@/components/ui/Card'
 import { VendorStatusBadge } from '@/components/ui/Badge'
 import { VendorProfileForm } from '@/components/vendors/VendorProfileForm'
-import { getSignedDownloadUrl } from '@/lib/s3'
 
 export default async function VendorProfilePage() {
   const session = await requireVendor()
-  const vendor = await prisma.vendor.findUnique({
-    where: { userId: session.user.id },
-    include: { user: { select: { email: true } } },
-  })
+  const data = await getVendorProfile(session.user.id)
+  if (!data) redirect('/login')
 
-  if (!vendor) redirect('/login')
-
-  let ktpPreviewUrl: string | undefined
-  if (vendor.ktpFileKey) {
-    try {
-      ktpPreviewUrl = await getSignedDownloadUrl(vendor.ktpFileKey)
-    } catch {
-      ktpPreviewUrl = undefined
-    }
-  }
-
+  const { vendor, ktpPreviewUrl } = data
   const isFirstSubmission = vendor.status === 'PENDING_PROFILE'
 
   return (

@@ -1,11 +1,11 @@
-import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/permissions'
+import { getCompanySettings } from '@/queries/settings'
 import { Card, CardBody } from '@/components/ui/Card'
 import { CompanySettingsForm } from '@/components/settings/CompanySettingsForm'
 
 export default async function CompanySettingsPage() {
   await requireAdmin()
-  const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+  const settings = await getCompanySettings()
 
   if (!settings) {
     return <div className="text-sm text-coral-600">Company settings belum diinisialisasi. Jalankan db seed.</div>

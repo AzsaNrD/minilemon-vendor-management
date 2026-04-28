@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { CheckCircle2, FileText, FolderKanban, Clock } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { requireVendor } from '@/lib/permissions'
+import { getVendorDashboard } from '@/queries/dashboard'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ProjectStatusBadge } from '@/components/ui/Badge'
@@ -10,9 +10,7 @@ import { formatRelativeTime } from '@/lib/utils'
 
 export default async function VendorDashboardPage() {
   const session = await requireVendor()
-  const vendor = await prisma.vendor.findUnique({
-    where: { userId: session.user.id },
-  })
+  const { vendor, projects, counts } = await getVendorDashboard(session.user.id)
 
   if (!vendor) {
     return <EmptyState title="Profil belum siap" description="Hubungi admin untuk aktivasi akun." />
@@ -70,19 +68,6 @@ export default async function VendorDashboardPage() {
         </Card>
       </div>
     )
-  }
-
-  // ACTIVE
-  const projects = await prisma.project.findMany({
-    where: { vendorId: vendor.id, deletedAt: null },
-    orderBy: { lastUpdatedAt: 'desc' },
-    take: 10,
-  })
-
-  const counts = {
-    inProgress: projects.filter((p) => p.status === 'IN_PROGRESS').length,
-    pending: projects.filter((p) => ['QUOTATION_PENDING', 'SPK_PENDING_SIGN', 'INVOICE_SUBMITTED'].includes(p.status)).length,
-    completed: projects.filter((p) => p.status === 'COMPLETED').length,
   }
 
   return (

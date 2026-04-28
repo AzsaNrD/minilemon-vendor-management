@@ -1,10 +1,8 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { notFound, redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
 import { requireVendor } from '@/lib/permissions'
-import { getCompanyInfo } from '@/lib/nda'
-import { getSignedDownloadUrl } from '@/lib/s3'
+import { getProjectDetail } from '@/queries/projects'
 import { ProjectStatusBadge } from '@/components/ui/Badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { ProjectInfoCard } from '@/components/projects/ProjectInfoCard'
@@ -15,8 +13,6 @@ import { SPKPreview } from '@/components/shared/SPKPreview'
 import { InvoiceTabVendor } from '@/components/projects/InvoiceTabVendor'
 import { InvoicePreview } from '@/components/shared/InvoicePreview'
 import { ChatThread } from '@/components/shared/ChatThread'
-import { serializeQuotation } from '@/lib/quotation'
-import { serializeInvoice } from '@/lib/invoice'
 
 export default async function VendorProjectDetailPage({
   params,
@@ -29,48 +25,16 @@ export default async function VendorProjectDetailPage({
   const { id } = await params
   const { tab } = await searchParams
 
-  const project = await prisma.project.findUnique({
-    where: { id },
-    include: {
-      vendor: { select: { id: true, fullName: true, vendorCode: true, category: true } },
-      quotations: { orderBy: { createdAt: 'desc' } },
-      spk: true,
-      invoice: true,
-    },
-  })
-  if (!project) notFound()
-  if (project.vendorId !== session.user.vendorId) redirect('/projects')
+  const detail = await getProjectDetail(id)
+  if (!detail) notFound()
+  if (detail.project.vendorId !== session.user.vendorId) redirect('/projects')
 
-  const { quotations: rawQuotations, spk, invoice: rawInvoice, ...projectInfo } = project
-  const allQuotations = rawQuotations.map(serializeQuotation)
-  const activeQuotation =
-    allQuotations.find((q) => q.status !== 'SUPERSEDED') ?? allQuotations[0] ?? null
-  const invoice = rawInvoice ? serializeInvoice(rawInvoice) : null
-
-  const company = activeQuotation || spk || invoice ? await getCompanyInfo() : null
-  const vendorFull = activeQuotation || spk || invoice
-    ? await prisma.vendor.findUnique({ where: { id: project.vendorId } })
-    : null
-
-  const [quoVendorSig, quoAdminSig, spkVendorSig, spkAdminSig, invVendorSig] = await Promise.all([
-    activeQuotation?.vendorSignatureKey
-      ? getSignedDownloadUrl(activeQuotation.vendorSignatureKey).catch(() => undefined)
-      : undefined,
-    activeQuotation?.adminSignatureKey
-      ? getSignedDownloadUrl(activeQuotation.adminSignatureKey).catch(() => undefined)
-      : undefined,
-    spk?.vendorSignatureKey ? getSignedDownloadUrl(spk.vendorSignatureKey).catch(() => undefined) : undefined,
-    spk?.adminSignatureKey ? getSignedDownloadUrl(spk.adminSignatureKey).catch(() => undefined) : undefined,
-    invoice?.vendorSignatureKey
-      ? getSignedDownloadUrl(invoice.vendorSignatureKey).catch(() => undefined)
-      : undefined,
-  ])
+  const { project, projectInfo, allQuotations, activeQuotation, spk, invoice, company, vendorFull, signatureUrls } =
+    detail
 
   const canSubmitQuotation = ['QUOTATION_PENDING', 'QUOTATION_NEGOTIATION'].includes(project.status)
   const canSubmitInvoice = project.status === 'IN_PROGRESS' && !invoice
-  const initialTab = ['info', 'quotation', 'spk', 'invoice', 'chat'].includes(tab ?? '')
-    ? tab!
-    : 'info'
+  const initialTab = ['info', 'quotation', 'spk', 'invoice', 'chat'].includes(tab ?? '') ? tab! : 'info'
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -113,8 +77,8 @@ export default async function VendorProjectDetailPage({
                 quotation={activeQuotation}
                 vendor={vendorFull}
                 company={company}
-                vendorSignatureUrl={quoVendorSig}
-                adminSignatureUrl={quoAdminSig}
+                vendorSignatureUrl={signatureUrls.quoVendor}
+                adminSignatureUrl={signatureUrls.quoAdmin}
               />
             )}
           </div>
@@ -127,8 +91,8 @@ export default async function VendorProjectDetailPage({
               <SPKPreview
                 spk={spk}
                 company={company}
-                vendorSignatureUrl={spkVendorSig}
-                adminSignatureUrl={spkAdminSig}
+                vendorSignatureUrl={signatureUrls.spkVendor}
+                adminSignatureUrl={signatureUrls.spkAdmin}
               />
             )}
           </div>
@@ -142,7 +106,7 @@ export default async function VendorProjectDetailPage({
                 invoice={invoice}
                 vendor={vendorFull}
                 company={company}
-                vendorSignatureUrl={invVendorSig}
+                vendorSignatureUrl={signatureUrls.invVendor}
               />
             )}
           </div>

@@ -1,15 +1,11 @@
-import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/permissions'
-import { getSignedDownloadUrl } from '@/lib/s3'
+import { getMasterSignatureContext } from '@/queries/settings'
 import { Card, CardBody } from '@/components/ui/Card'
 import { MasterSignatureForm } from '@/components/settings/MasterSignatureForm'
 
 export default async function MasterSignaturePage() {
   await requireAdmin()
-  const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
-  const currentUrl = settings?.adminMasterSignatureKey
-    ? await getSignedDownloadUrl(settings.adminMasterSignatureKey).catch(() => undefined)
-    : undefined
+  const { settings, currentUrl } = await getMasterSignatureContext()
 
   return (
     <div className="max-w-2xl space-y-6">

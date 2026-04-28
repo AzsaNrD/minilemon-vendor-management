@@ -1,10 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Mail, Phone, MapPin, CreditCard, FileX } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/permissions'
-import { getCompanyInfo } from '@/lib/nda'
-import { getSignedDownloadUrl } from '@/lib/s3'
+import { getVendorDetail } from '@/queries/vendors'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardBody } from '@/components/ui/Card'
 import { VendorStatusBadge } from '@/components/ui/Badge'
@@ -26,38 +24,9 @@ export default async function VendorDetailPage({
   const { id } = await params
   const { tab } = await searchParams
 
-  const vendor = await prisma.vendor.findUnique({
-    where: { id },
-    include: {
-      user: { select: { id: true, email: true, lastLoginAt: true, createdAt: true, isActive: true } },
-      _count: { select: { projects: true } },
-      ndas: { orderBy: { createdAt: 'desc' }, take: 1 },
-    },
-  })
-
-  if (!vendor) notFound()
-
-  const auditLogs = await prisma.auditLog.findMany({
-    where: {
-      OR: [
-        { entityType: 'Vendor', entityId: vendor.id },
-        { entityType: 'NDA', entityId: { in: vendor.ndas.map((n) => n.id) } },
-        { userId: vendor.user.id },
-      ],
-    },
-    include: { user: { select: { fullName: true, role: true } } },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  })
-
-  const nda = vendor.ndas[0]
-  const company = nda ? await getCompanyInfo() : null
-  const [vendorSigUrl, adminSigUrl] = nda
-    ? await Promise.all([
-        nda.vendorSignatureKey ? getSignedDownloadUrl(nda.vendorSignatureKey).catch(() => undefined) : undefined,
-        nda.adminSignatureKey ? getSignedDownloadUrl(nda.adminSignatureKey).catch(() => undefined) : undefined,
-      ])
-    : [undefined, undefined]
+  const detail = await getVendorDetail(id)
+  if (!detail) notFound()
+  const { vendor, auditLogs, nda, company, vendorSigUrl, adminSigUrl } = detail
 
   return (
     <div className="space-y-6">

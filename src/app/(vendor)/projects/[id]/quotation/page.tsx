@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
 import { requireVendor } from '@/lib/permissions'
+import { getQuotationFormContext } from '@/queries/projects'
 import { Card, CardBody } from '@/components/ui/Card'
 import { SubmitQuotationForm } from '@/components/projects/SubmitQuotationForm'
 import type { QuotationItemInput } from '@/schemas/quotation'
@@ -15,26 +15,16 @@ export default async function SubmitQuotationPage({
   searchParams: Promise<{ revise?: string }>
 }) {
   const session = await requireVendor()
+  if (!session.user.vendorId) redirect('/projects')
   const { id } = await params
   const { revise } = await searchParams
 
-  const project = await prisma.project.findUnique({
-    where: { id },
-    include: { quotations: { orderBy: { createdAt: 'desc' }, take: 1 } },
-  })
-  if (!project) notFound()
-  if (project.vendorId !== session.user.vendorId) redirect('/projects')
-  if (!['QUOTATION_PENDING', 'QUOTATION_NEGOTIATION'].includes(project.status)) {
-    redirect(`/projects/${id}?tab=quotation`)
-  }
+  const ctx = await getQuotationFormContext(id, session.user.vendorId, revise)
+  if (!ctx.project) notFound()
+  if (ctx.ownership === 'forbidden') redirect('/projects')
+  if (ctx.status === 'invalid') redirect(`/projects/${id}?tab=quotation`)
 
-  let parent = null
-  if (revise) {
-    parent = await prisma.quotation.findUnique({ where: { id: revise } })
-    if (!parent || parent.projectId !== project.id) parent = null
-  } else if (project.status === 'QUOTATION_NEGOTIATION') {
-    parent = project.quotations.find((q) => q.status === 'REVISION_REQUESTED') ?? null
-  }
+  const { project, parent } = ctx
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
