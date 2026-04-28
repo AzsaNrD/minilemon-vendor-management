@@ -5,15 +5,19 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/permissions'
 import { getCompanyInfo } from '@/lib/nda'
 import { getSignedDownloadUrl } from '@/lib/s3'
-import { Card, CardBody } from '@/components/ui/Card'
 import { ProjectStatusBadge } from '@/components/ui/Badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { ProjectInfoCard } from '@/components/projects/ProjectInfoCard'
 import { ProjectActionsMenu } from '@/components/projects/ProjectActionsMenu'
 import { QuotationTabAdmin } from '@/components/projects/QuotationTabAdmin'
 import { QuotationPreview } from '@/components/shared/QuotationPreview'
+import { SPKTabAdmin } from '@/components/projects/SPKTabAdmin'
+import { SPKPreview } from '@/components/shared/SPKPreview'
+import { InvoiceTabAdmin } from '@/components/projects/InvoiceTabAdmin'
+import { InvoicePreview } from '@/components/shared/InvoicePreview'
 import { ChatThread } from '@/components/shared/ChatThread'
 import { serializeQuotation } from '@/lib/quotation'
+import { serializeInvoice } from '@/lib/invoice'
 
 export default async function AdminProjectDetailPage({
   params,
@@ -31,29 +35,36 @@ export default async function AdminProjectDetailPage({
     include: {
       vendor: { select: { id: true, fullName: true, vendorCode: true, category: true } },
       quotations: { orderBy: { createdAt: 'desc' } },
+      spk: true,
+      invoice: true,
     },
   })
   if (!project) notFound()
 
-  const { quotations: rawQuotations, ...projectInfo } = project
+  const { quotations: rawQuotations, spk, invoice: rawInvoice, ...projectInfo } = project
   const allQuotations = rawQuotations.map(serializeQuotation)
   const activeQuotation =
     allQuotations.find((q) => q.status !== 'SUPERSEDED') ?? allQuotations[0] ?? null
+  const invoice = rawInvoice ? serializeInvoice(rawInvoice) : null
 
-  const company = activeQuotation ? await getCompanyInfo() : null
-  const vendorFull = activeQuotation
+  const company = activeQuotation || spk || invoice ? await getCompanyInfo() : null
+  const vendorFull = activeQuotation || spk || invoice
     ? await prisma.vendor.findUnique({ where: { id: project.vendorId } })
     : null
-  const [vendorSigUrl, adminSigUrl] = activeQuotation
-    ? await Promise.all([
-        activeQuotation.vendorSignatureKey
-          ? getSignedDownloadUrl(activeQuotation.vendorSignatureKey).catch(() => undefined)
-          : undefined,
-        activeQuotation.adminSignatureKey
-          ? getSignedDownloadUrl(activeQuotation.adminSignatureKey).catch(() => undefined)
-          : undefined,
-      ])
-    : [undefined, undefined]
+
+  const [quoVendorSig, quoAdminSig, spkVendorSig, spkAdminSig, invVendorSig] = await Promise.all([
+    activeQuotation?.vendorSignatureKey
+      ? getSignedDownloadUrl(activeQuotation.vendorSignatureKey).catch(() => undefined)
+      : undefined,
+    activeQuotation?.adminSignatureKey
+      ? getSignedDownloadUrl(activeQuotation.adminSignatureKey).catch(() => undefined)
+      : undefined,
+    spk?.vendorSignatureKey ? getSignedDownloadUrl(spk.vendorSignatureKey).catch(() => undefined) : undefined,
+    spk?.adminSignatureKey ? getSignedDownloadUrl(spk.adminSignatureKey).catch(() => undefined) : undefined,
+    invoice?.vendorSignatureKey
+      ? getSignedDownloadUrl(invoice.vendorSignatureKey).catch(() => undefined)
+      : undefined,
+  ])
 
   const initialTab = ['info', 'quotation', 'spk', 'invoice', 'chat'].includes(tab ?? '')
     ? tab!
@@ -84,12 +95,8 @@ export default async function AdminProjectDetailPage({
         <TabsList>
           <TabsTrigger value="info">Info</TabsTrigger>
           <TabsTrigger value="quotation">Quotation</TabsTrigger>
-          <TabsTrigger value="spk" disabled>
-            SPK
-          </TabsTrigger>
-          <TabsTrigger value="invoice" disabled>
-            Invoice
-          </TabsTrigger>
+          <TabsTrigger value="spk">SPK</TabsTrigger>
+          <TabsTrigger value="invoice">Invoice</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
         </TabsList>
 
@@ -105,27 +112,39 @@ export default async function AdminProjectDetailPage({
                 quotation={activeQuotation}
                 vendor={vendorFull}
                 company={company}
-                vendorSignatureUrl={vendorSigUrl}
-                adminSignatureUrl={adminSigUrl}
+                vendorSignatureUrl={quoVendorSig}
+                adminSignatureUrl={quoAdminSig}
               />
             )}
           </div>
         </TabsContent>
 
         <TabsContent value="spk">
-          <Card>
-            <CardBody className="py-12 text-center text-sm text-ink-500 italic">
-              Modul SPK akan tersedia di Phase 4.
-            </CardBody>
-          </Card>
+          <div className="space-y-4">
+            <SPKTabAdmin spk={spk} />
+            {spk && company && (
+              <SPKPreview
+                spk={spk}
+                company={company}
+                vendorSignatureUrl={spkVendorSig}
+                adminSignatureUrl={spkAdminSig}
+              />
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="invoice">
-          <Card>
-            <CardBody className="py-12 text-center text-sm text-ink-500 italic">
-              Modul Invoice akan tersedia di Phase 4.
-            </CardBody>
-          </Card>
+          <div className="space-y-4">
+            <InvoiceTabAdmin invoice={invoice} />
+            {invoice && company && vendorFull && (
+              <InvoicePreview
+                invoice={invoice}
+                vendor={vendorFull}
+                company={company}
+                vendorSignatureUrl={invVendorSig}
+              />
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="chat">
