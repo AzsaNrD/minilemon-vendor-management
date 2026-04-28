@@ -10,6 +10,7 @@ import { renderPDF, fileKeyToDataUrl } from '@/lib/pdf'
 import { QuotationDocument, QUOTATION_PDF_CSS } from '@/pdf-templates/QuotationDocument'
 import { getCompanyInfo } from '@/lib/nda'
 import { createQuotation } from '@/lib/quotation'
+import { ensureSPKDraft } from '@/lib/spk'
 import { formatIDR } from '@/lib/utils'
 import {
   submitQuotationSchema,
@@ -320,6 +321,15 @@ export async function vendorSignQuotation(quotationId: string, input: unknown): 
         lastUpdatedAt: new Date(),
       },
     })
+
+    // Auto-create SPK draft for admin to fill in
+    await ensureSPKDraft(tx, {
+      projectId: quotation.projectId,
+      vendorId: quotation.vendorId,
+      vendor: quotation.vendor,
+      quotation,
+    })
+
     await notifyAdmins(tx, {
       type: 'ACTION',
       title: 'Quotation final ditandatangani',
