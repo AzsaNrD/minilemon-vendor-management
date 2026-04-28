@@ -1,25 +1,33 @@
-import { Card, CardBody } from '@/components/ui/Card'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { FileText } from 'lucide-react'
 import { requireVendor } from '@/lib/permissions'
+import { listDocuments } from '@/lib/documents'
+import { DocumentFilter } from '@/components/documents/DocumentFilter'
+import { DocumentTable } from '@/components/documents/DocumentTable'
 
-export default async function VendorDocumentsPage() {
-  await requireVendor()
+export default async function VendorDocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string; q?: string; status?: string }>
+}) {
+  const session = await requireVendor()
+  const params = await searchParams
+  if (!session.user.vendorId) return null
+
+  const rows = await listDocuments({
+    vendorId: session.user.vendorId,
+    type: (params.type as any) || 'all',
+    q: params.q,
+    status: params.status,
+  })
+
   return (
-    <div className="max-w-5xl mx-auto">
-      <header className="mb-6">
-        <h1 className="font-display text-3xl font-bold">Documents</h1>
-        <p className="mt-1 text-sm text-ink-600">Semua dokumen Anda akan muncul di sini.</p>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <header>
+        <h1 className="font-display text-3xl font-bold text-ink-900">Dokumen Saya</h1>
+        <p className="mt-1 text-sm text-ink-600">Semua NDA, Quotation, SPK, dan Invoice Anda dalam satu halaman.</p>
       </header>
-      <Card>
-        <CardBody>
-          <EmptyState
-            icon={<FileText className="h-5 w-5" />}
-            title="Document Center menyusul"
-            description="Fitur ini akan tersedia setelah Phase 2 (NDA + Project lifecycle)."
-          />
-        </CardBody>
-      </Card>
+
+      <DocumentFilter />
+      <DocumentTable rows={rows} isAdmin={false} />
     </div>
   )
 }
