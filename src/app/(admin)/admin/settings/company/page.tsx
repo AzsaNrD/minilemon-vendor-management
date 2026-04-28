@@ -1,22 +1,35 @@
-import { Card, CardBody } from '@/components/ui/Card'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { Settings } from 'lucide-react'
+import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/permissions'
+import { Card, CardBody } from '@/components/ui/Card'
+import { CompanySettingsForm } from '@/components/settings/CompanySettingsForm'
 
 export default async function CompanySettingsPage() {
   await requireAdmin()
+  const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+
+  if (!settings) {
+    return <div className="text-sm text-coral-600">Company settings belum diinisialisasi. Jalankan db seed.</div>
+  }
+
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       <header>
-        <h1 className="font-display text-3xl font-bold">Pengaturan</h1>
-        <p className="mt-1 text-sm text-ink-600">Master signature & company info — tersedia di Phase 2 dan 4.</p>
+        <h1 className="font-display text-3xl font-bold">Pengaturan Perusahaan</h1>
+        <p className="mt-1 text-sm text-ink-600">
+          Informasi ini akan muncul di header dokumen NDA, Quotation, SPK, dan Invoice.
+        </p>
       </header>
       <Card>
         <CardBody>
-          <EmptyState
-            icon={<Settings className="h-5 w-5" />}
-            title="Settings menyusul"
-            description="Master signature admin akan dibuka di Phase 2, company info di Phase 4."
+          <CompanySettingsForm
+            initial={{
+              name: settings.name,
+              address: settings.address,
+              phone: settings.phone,
+              email: settings.email,
+              directorName: settings.directorName,
+              directorTitle: settings.directorTitle,
+            }}
           />
         </CardBody>
       </Card>

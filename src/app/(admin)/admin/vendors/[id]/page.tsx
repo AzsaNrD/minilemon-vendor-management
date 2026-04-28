@@ -29,13 +29,26 @@ export default async function VendorDetailPage({
   const vendor = await prisma.vendor.findUnique({
     where: { id },
     include: {
-      user: { select: { email: true, lastLoginAt: true, createdAt: true, isActive: true } },
+      user: { select: { id: true, email: true, lastLoginAt: true, createdAt: true, isActive: true } },
       _count: { select: { projects: true } },
       ndas: { orderBy: { createdAt: 'desc' }, take: 1 },
     },
   })
 
   if (!vendor) notFound()
+
+  const auditLogs = await prisma.auditLog.findMany({
+    where: {
+      OR: [
+        { entityType: 'Vendor', entityId: vendor.id },
+        { entityType: 'NDA', entityId: { in: vendor.ndas.map((n) => n.id) } },
+        { userId: vendor.user.id },
+      ],
+    },
+    include: { user: { select: { fullName: true, role: true } } },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  })
 
   const nda = vendor.ndas[0]
   const company = nda ? await getCompanyInfo() : null
@@ -67,13 +80,11 @@ export default async function VendorDetailPage({
         <VendorActionsMenu vendorId={vendor.id} status={vendor.status} userActive={vendor.user.isActive} />
       </header>
 
-      <Tabs defaultValue={tab === 'nda' ? 'nda' : 'overview'}>
+      <Tabs defaultValue={['overview', 'nda', 'audit'].includes(tab ?? '') ? tab! : 'overview'}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="nda">NDA</TabsTrigger>
-          <TabsTrigger value="projects" disabled>
-            Project History
-          </TabsTrigger>
+          <TabsTrigger value="audit">Audit Log</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -138,6 +149,34 @@ export default async function VendorDetailPage({
               </CardBody>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <Card>
+            <CardBody className="space-y-2">
+              <h2 className="font-display text-lg font-semibold">Audit Log</h2>
+              {auditLogs.length === 0 ? (
+                <p className="text-sm text-ink-500 italic">Belum ada aktivitas tercatat.</p>
+              ) : (
+                <ul className="divide-y divide-ink-100">
+                  {auditLogs.map((log) => (
+                    <li key={log.id} className="py-2 flex items-start gap-3">
+                      <div className="w-32 shrink-0 text-xs text-ink-500">
+                        {formatDate(log.createdAt, { withTime: true })}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-ink-900 font-mono">{log.action}</p>
+                        <p className="text-xs text-ink-500">
+                          {log.entityType} · {log.entityId.slice(0, 8)}…
+                          {log.user && ` · oleh ${log.user.fullName} (${log.user.role})`}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardBody>
+          </Card>
         </TabsContent>
 
         <TabsContent value="nda">

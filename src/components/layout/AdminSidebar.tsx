@@ -2,7 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, FolderKanban, FileText, Settings } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Users,
+  FolderKanban,
+  FileText,
+  Settings,
+  Building2,
+  PenLine,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const items = [
@@ -10,11 +18,16 @@ const items = [
   { href: '/admin/vendors', label: 'Vendors', icon: Users },
   { href: '/admin/projects', label: 'Projects', icon: FolderKanban },
   { href: '/admin/documents', label: 'Documents', icon: FileText },
-  { href: '/admin/settings/signature', label: 'Settings', icon: Settings, matchPrefix: '/admin/settings' },
+]
+
+const settingsItems = [
+  { href: '/admin/settings/signature', label: 'Master Signature', icon: PenLine },
+  { href: '/admin/settings/company', label: 'Company Info', icon: Building2 },
 ]
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-ink-100 bg-white">
@@ -29,16 +42,13 @@ export function AdminSidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {items.map((item) => {
           const Icon = item.icon
-          const isActive = item.matchPrefix
-            ? pathname.startsWith(item.matchPrefix)
-            : pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive ? 'bg-ink-900 text-lemon-400' : 'text-ink-700 hover:bg-ink-50',
+                isActive(item.href) ? 'bg-ink-900 text-lemon-400' : 'text-ink-700 hover:bg-ink-50',
               )}
             >
               <Icon className="h-4 w-4" />
@@ -46,10 +56,30 @@ export function AdminSidebar() {
             </Link>
           )
         })}
+
+        <div className="pt-4">
+          <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-ink-400 inline-flex items-center gap-1">
+            <Settings className="h-3 w-3" /> Settings
+          </p>
+          {settingsItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive(item.href) ? 'bg-ink-900 text-lemon-400' : 'text-ink-700 hover:bg-ink-50',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            )
+          })}
+        </div>
       </nav>
-      <div className="px-6 py-4 border-t border-ink-100 text-xs text-ink-400">
-        v0.1.0 &middot; Admin
-      </div>
+      <div className="px-6 py-4 border-t border-ink-100 text-xs text-ink-400">v0.1.0 · Admin</div>
     </aside>
   )
 }
