@@ -10,6 +10,17 @@ export default auth((req) => {
   const { pathname } = req.nextUrl
   const session = req.auth
 
+  // API routes: enforce auth only (return 401 JSON, never redirect — browsers
+  // would follow the redirect and clients calling response.json() would get
+  // HTML and crash with "Unexpected token <"). Role/onboarding checks happen
+  // inside each route handler.
+  if (pathname.startsWith('/api/')) {
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    return NextResponse.next()
+  }
+
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     if (session?.user) {
       const dest = session.user.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard'
