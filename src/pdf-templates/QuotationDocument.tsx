@@ -178,7 +178,8 @@ export const QUOTATION_PDF_CSS = `
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin: -20mm -18mm 18px -18mm;
+    margin: 0 0 18px 0;
+    border-radius: 4px;
   }
   .doc-type {
     font-size: 22pt;
